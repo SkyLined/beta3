@@ -7,6 +7,7 @@ output_header_size = int(output_screen_width / 3)
 
 def ascii_encoder(format, data, switches = None):
   result = ""
+  errors = False
   badchars = []
   if switches is not None and switches["--badchars"] != "":
     for i in switches["--badchars"].split(","):
@@ -16,19 +17,25 @@ def ascii_encoder(format, data, switches = None):
     if switches is not None:
       if char in badchars:
         print >>sys.stderr, "Char %d @0x%02X = bad (%02X)" % (i, i, char)
+        errors = True
       if switches["--nullfree"] and char == 0:
         print >>sys.stderr, "Char %d @0x%02X = bad (NULL)" % (i, i)
+        errors = True
       if switches["--uppercase"] and char >= ord('a') and char <= ord('z'):
         print >>sys.stderr, "Char %d @0x%02X = bad (lowercase '%s' %02X)" % (i, i, data[i], char)
+        errors = True
       if switches["--lowercase"] and char >= ord('A') and char <= ord('Z'):
         print >>sys.stderr, "Char %d @0x%02X = bad (uppercase '%s' %02X)" % (i, i, data[i], char)
+        errors = True
       if switches["--alphanumeric"] and char not in MIXEDCASE_ASCII_CHARS:
         print >>sys.stderr, "Char %d @0x%02X = bad (non-alphanumeric '%s' %02X)" % (i, i, data[i], char)
+        errors = True
     result += format % char
-  return result
+  return result, errors
 
 def unicode_encoder(format, data, switches = None):
   result = ""
+  errors = False
   badchars = []
   if switches is not None and switches["--badchars"] != "":
     for i in switches["--badchars"].split(","):
@@ -38,16 +45,21 @@ def unicode_encoder(format, data, switches = None):
     if switches is not None:
       if char in badchars:
         print >>sys.stderr, "Char %d @0x%02X = bad (%04X)" % (i, i, char)
+        errors = True
       if switches["--nullfree"] and char == 0:
         print >>sys.stderr, "Char %d @0x%02X = bad (NULL)" % (i, i)
+        errors = True
       if switches["--uppercase"] and char >= ord('a') and char <= ord('z'):
         print >>sys.stderr, "Char %d @0x%02X = bad (lowercase '%s' %04X)" % (i, i, data[i], char)
+        errors = True
       if switches["--lowercase"] and char >= ord('A') and char <= ord('Z'):
         print >>sys.stderr, "Char %d @0x%02X = bad (uppercase '%s' %04X)" % (i, i, data[i], char)
+        errors = True
       if switches["--alphanumeric"] and char not in MIXEDCASE_ASCII_CHARS:
         print >>sys.stderr, "Char %d @0x%02X = bad (non-alphanumeric '%s' %04X)" % (i, i, data[i], char)
+        errors = True
     result += format % char
-  return result
+  return result, errors
 
 encoders = {
   "h":     ("%02X",      ascii_encoder),
@@ -75,7 +87,7 @@ def Help():
   print "".center(output_screen_width, "_")
   print
   print """    ,sSSSs,   ,sSSSs,  BETA3 - Multi-format shellcode encoding tool.         """.center(output_screen_width)
-  print """   iS"`  XP  YS"  ,SY                                                        """.center(output_screen_width)
+  print """   iS"`  XP  YS"  ,SY  (Version 0.2)                                         """.center(output_screen_width)
   print """  .SP dSS"      ssS"   Copyright (C) 2003-2009 by Berend-Jan "SkyLined" Wever""".center(output_screen_width)
   print """  dS'   Xb  SP,  ;SP   <berendjanwever@gmail.com>                            """.center(output_screen_width)
   print """ .SP dSSP'  "YSSSY"    http://skypher.com/wiki/index.php/BETA3               """.center(output_screen_width)
@@ -119,18 +131,22 @@ def Main():
     else:
       print >>sys.stderr, "Two file names or unknown encoder: '%s' and '%s'" % (file_name, arg)
       Help()
-      return
+      return 1
   if not file_name:
     print >>sys.stderr, "Missing file name."
     Help()
-    return
+    return 1
   if not encoder_info:
     print >>sys.stderr, "Missing/unknown encoder"
     Help()
-    return
+    return 1
   data_stream = open(file_name, "rb")
   data = data_stream.read()
-  print encoder_info[1](encoder_info[0], data, switches)
+  encoded_shellcode, errors = encoder_info[1](encoder_info[0], data, switches)
+  print encoded_shellcode
+  if errors:
+    return 1
+  return 0
 
 if __name__ == "__main__":
-  Main()
+  exit(Main())
