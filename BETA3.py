@@ -98,21 +98,24 @@ def Help():
   print "  source-code. It can convert raw binary data to a large number of encodings."
   print
   print "Usage:"
-  print "  BETA3.py  [file name] [encoder] [options]"
+  print "  BETA3.py  [arguments|options]"
   print ""
-  print "Where:"
-  print "  file name = File with data to encode"
-  print "  encoder = One of the following encodings (example input = 'ABCD'):"
+  print "Arguments:"
+  print "  input file path        - Input file with data to be encoded (optional,"
+  print "                           default is to read data from stdin)"
+  print "  encoder                - One of the following encodings:"
   sorted_encoder_keys = encoders.keys()
   sorted_encoder_keys.sort()
   for i in sorted_encoder_keys:
     print "    %-5s : %s" % (i, encoders[i][1](encoders[i][0], "ABCD"))
-  print "  options = One of the following switches:"
-  print "    --nullfree            Report any NULL characters in the data."
-  print "    --lowercase           Report any uppercase characters in the data."
-  print "    --uppercase           Report any lowercase characters in the data."
-  print "    --alphanumeric        Report any non-alphanumeric characters in the data."
-  print "    --badchars=XX,XX,...  Report any of the characters supplied by hex value."
+  print "    (All these samples use as input data the string \"ABCD\")"
+  print
+  print "Options:"
+  print "    --nullfree           - Report any NULL characters in the data."
+  print "    --lowercase          - Report any uppercase characters in the data."
+  print "    --uppercase          - Report any lowercase characters in the data."
+  print "    --alphanumeric       - Report any non-alphanumeric characters in the data."
+  print "    --badchars=XX,XX,... - Report any of the characters supplied by hex value."
 
 def Main():
   global switches, encoders
@@ -131,22 +134,24 @@ def Main():
     else:
       print >>sys.stderr, "Two file names or unknown encoder: '%s' and '%s'" % (file_name, arg)
       Help()
-      return 1
-  if not file_name:
-    print >>sys.stderr, "Missing file name."
-    Help()
-    return 1
+      return False
   if not encoder_info:
     print >>sys.stderr, "Missing/unknown encoder"
     Help()
-    return 1
-  data_stream = open(file_name, "rb")
-  data = data_stream.read()
+    return False
+  if not file_name:
+    data = sys.stdin.read()
+  else:
+    data_stream = open(file_name, "rb")
+    try:
+      data = data_stream.read()
+    finally:
+      data_stream.close()
   encoded_shellcode, errors = encoder_info[1](encoder_info[0], data, switches)
   print encoded_shellcode
-  if errors:
-    return 1
-  return 0
+  return not errors
 
 if __name__ == "__main__":
-  exit(Main())
+  success = Main()
+  exit_code = {True: 0, False: 1}[success]
+  exit(exit_code)
