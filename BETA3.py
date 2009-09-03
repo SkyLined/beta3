@@ -1,5 +1,15 @@
 import sys
 
+#_______________________________________________________________________________________________________________________
+#                                                                                                                       
+#                      ,sSSSs,   ,sSSSs,   : BETA3 - Multi-format shellcode encoding tool.                              
+#                     iS"`  XP  YS"  ,SY   :                                                                            
+#                    .SP dSS"      ssS"    : Copyright (C) 2003-2009 by SkyLined.                                       
+#                    dS'   Xb  SP,  ;SP    : <berendjanwever@gmail.com>                                                 
+#                   .SP dSSP'  "YSSSY"     : http://skypher.com/wiki/index.php/BETA3                                    
+#__________________ 4S:_________________________________________________________________________________________________
+#                                                                                                                       
+
 MIXEDCASE_ASCII_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 output_screen_width = 119
