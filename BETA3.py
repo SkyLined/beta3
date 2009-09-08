@@ -50,7 +50,7 @@ def EncodeUnicode(format, data, badchars, switches):
   errors = False
   for i in range(0, len(data), 2):
     char_code = ord(data[i]) + ord(data[i + 1]) * 256;
-    errors |= CheckChar(i, chr(char_code), badchars, switches, "%04X")
+    errors |= CheckChar(i, unichr(char_code), badchars, switches, "%04X")
     result += format % char_code
   return result, len(data) * 2, errors
 
@@ -85,10 +85,10 @@ encoders = {
   "h":     ("%02X",      EncodeAscii),
   "hu":    ("%04X",      EncodeUnicode),
   "\\x":   ("\\x%02X",   EncodeAscii),
-  "\\u":   ("\\u%02X",   EncodeUnicode),
+  "\\u":   ("\\u%04X",   EncodeUnicode),
   "\\u00": ("\\u00%02X", EncodeAscii),
   "%":     ("%%%02X",    EncodeAscii),
-  "%u":    ("%%u%02X",   EncodeUnicode),
+  "%u":    ("%%u%04X",   EncodeUnicode),
   "%u00":  ("%%u00%02X", EncodeAscii),
   "&#":    ("&#%d;",     EncodeAscii),
   "&#u":   ("&#%d;",     EncodeUnicode),
@@ -176,7 +176,7 @@ def Main():
   badchars = ""
   if switches is not None and switches["--badchars"] != "":
     for i in switches["--badchars"].split(","):
-      badchars += chr(int(i, 16))
+      badchars += unichr(int(i, 16))
   encoded_shellcode, byte_count, errors = encoder_info[1](encoder_info[0], data, badchars, switches)
   if encoded_shellcode is not None:
     print encoded_shellcode
