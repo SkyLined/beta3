@@ -1,3 +1,4 @@
+# -*- coding: latin1 -*-
 import sys
 
 #_______________________________________________________________________________________________________________________
@@ -10,86 +11,98 @@ import sys
 #__________________ 4S:_________________________________________________________________________________________________
 #                                                                                                                       
 
-MIXEDCASE_ASCII_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+
+# http://en.wikipedia.org/wiki/Ascii
+# http://en.wikipedia.org/wiki/Code_page_437
+# http://en.wikipedia.org/wiki/ISO/IEC_8859-1
+numbers            = "0123456789"
+uppercase          = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+uppercase_cp437    = "€Ž’š¥âãäèêíî"
+uppercase_latin_1  = "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞ"
+lowercase          = "abcdefghijklmnopqrstuvwxyz"
+lowercase_cp437    = "‚ƒ„…†‡ˆ‰Š‹Œ‘“”•–—˜Ÿ ¡¢£¤àáåæçéë"
+lowercase_latin_1  = "ßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ"
+mixedcase          = uppercase + lowercase
+mixedcase_cp437    = uppercase_cp437 + lowercase_cp437
+mixedcase_latin_1  = uppercase_latin_1 + lowercase_latin_1
 
 output_screen_width = 119
 output_header_size = int(output_screen_width / 3)
 
-def ascii_encoder(format, data, switches = None):
-  result = ""
+def EncodeNone(format, data, badchars, switches):
   errors = False
-  badchars = []
-  if switches is not None and switches["--badchars"] != "":
-    for i in switches["--badchars"].split(","):
-      badchars.append(int(i, 16))
   for i in range(0, len(data)):
-    char = ord(data[i]);
-    if switches is not None:
-      if char in badchars:
-        print >>sys.stderr, "Char %d @0x%02X = bad (%02X)" % (i, i, char)
-        errors = True
-      if switches["--nullfree"] and char == 0:
-        print >>sys.stderr, "Char %d @0x%02X = bad (NULL)" % (i, i)
-        errors = True
-      if switches["--uppercase"] and char >= ord('a') and char <= ord('z'):
-        print >>sys.stderr, "Char %d @0x%02X = bad (lowercase '%s' %02X)" % (i, i, data[i], char)
-        errors = True
-      if switches["--lowercase"] and char >= ord('A') and char <= ord('Z'):
-        print >>sys.stderr, "Char %d @0x%02X = bad (uppercase '%s' %02X)" % (i, i, data[i], char)
-        errors = True
-      if switches["--alphanumeric"] and char not in MIXEDCASE_ASCII_CHARS:
-        print >>sys.stderr, "Char %d @0x%02X = bad (non-alphanumeric '%s' %02X)" % (i, i, data[i], char)
-        errors = True
-    result += format % char
-  return result, errors
+    char = data[i]
+    errors |= CheckChar(i, char, badchars, switches, "%02X")
+  return None, len(data), errors
 
-def unicode_encoder(format, data, switches = None):
+def EncodeAscii(format, data, badchars, switches):
   result = ""
   errors = False
-  badchars = []
-  if switches is not None and switches["--badchars"] != "":
-    for i in switches["--badchars"].split(","):
-      badchars.append(int(i, 16))
+  for i in range(0, len(data)):
+    char = data[i]
+    errors |= CheckChar(i, char, badchars, switches, "%02X")
+    result += format % ord(char)
+  return result, len(data), errors
+
+def EncodeUnicode(format, data, badchars, switches):
+  result = ""
+  errors = False
   for i in range(0, len(data), 2):
-    char = ord(data[i]) + ord(data[i + 1]) * 256;
-    if switches is not None:
-      if char in badchars:
-        print >>sys.stderr, "Char %d @0x%02X = bad (%04X)" % (i, i, char)
+    char_code = ord(data[i]) + ord(data[i + 1]) * 256;
+    errors |= CheckChar(i, chr(char_code), badchars, switches, "%04X")
+    result += format % char_code
+  return result, len(data) * 2, errors
+
+def CheckChar(i, char, badchars, switches, char_hex_fmtstr):
+  errors = False
+  char_hex = char_hex_fmtstr % ord(char)
+  if char in badchars:
+    print >>sys.stderr, "Char %d @0x%02X = bad (%s)" % (i, i, char_hex)
+    errors = True
+  if switches["--nullfree"] and char == '\0':
+    print >>sys.stderr, "Char %d @0x%02X = bad (NULL)" % (i, i)
+    errors = True
+  if switches["--uppercase"] and char not in uppercase:
+    if not switches["--latin-1"] or char not in uppercase_latin_1:
+      if not switches["--cp437"] or char not in uppercase_cp437:
+        print >>sys.stderr, "Char %d @0x%02X = bad (non-uppercase '%s' %s)" % (i, i, char, char_hex)
         errors = True
-      if switches["--nullfree"] and char == 0:
-        print >>sys.stderr, "Char %d @0x%02X = bad (NULL)" % (i, i)
+  if switches["--lowercase"] and char not in lowercase:
+    if not switches["--latin-1"] or char not in lowercase_latin_1:
+      if not switches["--cp437"] or char not in lowercase_cp437:
+        print >>sys.stderr, "Char %d @0x%02X = bad (non-lowercase '%s' %s)" % (i, i, char, char_hex)
         errors = True
-      if switches["--uppercase"] and char >= ord('a') and char <= ord('z'):
-        print >>sys.stderr, "Char %d @0x%02X = bad (lowercase '%s' %04X)" % (i, i, data[i], char)
+  if switches["--mixedcase"] and char not in mixedcase:
+    if not switches["--latin-1"] or char not in mixedcase_latin_1:
+      if not switches["--cp437"] or char not in mixedcase_cp437:
+        print >>sys.stderr, "Char %d @0x%02X = bad (non-alphanumeric '%s' %s)" % (i, i, char, char_hex)
         errors = True
-      if switches["--lowercase"] and char >= ord('A') and char <= ord('Z'):
-        print >>sys.stderr, "Char %d @0x%02X = bad (uppercase '%s' %04X)" % (i, i, data[i], char)
-        errors = True
-      if switches["--alphanumeric"] and char not in MIXEDCASE_ASCII_CHARS:
-        print >>sys.stderr, "Char %d @0x%02X = bad (non-alphanumeric '%s' %04X)" % (i, i, data[i], char)
-        errors = True
-    result += format % char
-  return result, errors
+  return errors
 
 encoders = {
-  "h":     ("%02X",      ascii_encoder),
-  "hu":    ("%04X",      unicode_encoder),
-  "\\x":   ("\\x%02X",   ascii_encoder),
-  "\\u":   ("\\u%02X",   unicode_encoder),
-  "\\u00": ("\\u00%02X", ascii_encoder),
-  "%":     ("%%%02X",    ascii_encoder),
-  "%u":    ("%%u%02X",   unicode_encoder),
-  "%u00":  ("%%u00%02X", ascii_encoder),
-  "&#":    ("&#%d;",     ascii_encoder),
-  "&#u":   ("&#%d;",     unicode_encoder),
-  "&#x":   ("&#x%X;",    ascii_encoder),
-  "&#xu":  ("&#x%X;",    unicode_encoder)
+  "none":  (None,        EncodeNone),
+  "h":     ("%02X",      EncodeAscii),
+  "hu":    ("%04X",      EncodeUnicode),
+  "\\x":   ("\\x%02X",   EncodeAscii),
+  "\\u":   ("\\u%02X",   EncodeUnicode),
+  "\\u00": ("\\u00%02X", EncodeAscii),
+  "%":     ("%%%02X",    EncodeAscii),
+  "%u":    ("%%u%02X",   EncodeUnicode),
+  "%u00":  ("%%u00%02X", EncodeAscii),
+  "&#":    ("&#%d;",     EncodeAscii),
+  "&#u":   ("&#%d;",     EncodeUnicode),
+  "&#x":   ("&#x%X;",    EncodeAscii),
+  "&#xu":  ("&#x%X;",    EncodeUnicode)
 }
 switches = {
     "--nullfree": False, 
     "--lowercase": False, 
     "--uppercase": False,
-    "--alphanumeric": False,
+    "--mixedcase": False,
+    "--cp437": False,
+    "--latin-1": False,
+    "--count": False,
     "--badchars": ""
 }
 
@@ -121,11 +134,16 @@ def Help():
   print "    (All these samples use as input data the string \"ABCD\")"
   print
   print "Options:"
+  print "    --count              - Report the number of bytes in the output."
   print "    --nullfree           - Report any NULL characters in the data."
-  print "    --lowercase          - Report any uppercase characters in the data."
-  print "    --uppercase          - Report any lowercase characters in the data."
-  print "    --alphanumeric       - Report any non-alphanumeric characters in the data."
   print "    --badchars=XX,XX,... - Report any of the characters supplied by hex value."
+  print ""
+  print "    --lowercase, --uppercase, or --mixedcase"
+  print "                         - Report any non-lower-, upper-, or mixedcase"
+  print "                           alphanumeric characters in the data. These options"
+  print "                           can be combined with both of these options:"
+  print "    --latin-1            - Allow alphanumeric latin-1 high ascii characters."
+  print "    --cp437              - Allow alphanumeric cp437 high ascii characters."
 
 def Main():
   global switches, encoders
@@ -146,9 +164,7 @@ def Main():
       Help()
       return False
   if not encoder_info:
-    print >>sys.stderr, "Missing/unknown encoder"
-    Help()
-    return False
+    encoder_info = encoders["none"]
   if not file_name:
     data = sys.stdin.read()
   else:
@@ -157,8 +173,15 @@ def Main():
       data = data_stream.read()
     finally:
       data_stream.close()
-  encoded_shellcode, errors = encoder_info[1](encoder_info[0], data, switches)
-  print encoded_shellcode
+  badchars = ""
+  if switches is not None and switches["--badchars"] != "":
+    for i in switches["--badchars"].split(","):
+      badchars += chr(int(i, 16))
+  encoded_shellcode, byte_count, errors = encoder_info[1](encoder_info[0], data, badchars, switches)
+  if encoded_shellcode is not None:
+    print encoded_shellcode
+  if switches["--count"]:
+    print "Size: %d (0x%X) bytes." % (byte_count, byte_count)
   return not errors
 
 if __name__ == "__main__":
