@@ -136,7 +136,7 @@ def Help():
   print "".center(console.output_screen_width, "_");
   print;
   print """    ,sSSSs,   ,sSSSs,  BETA3 - Multi-format shellcode encoding tool.         """.center(console.output_screen_width);
-  print """   iS"`  XP  YS"  ,SY  (Version 1.0)                                         """.center(console.output_screen_width);
+  print """   iS"`  XP  YS"  ,SY  (Version 1.1)                                         """.center(console.output_screen_width);
   print """  .SP dSS"      ssS"   Copyright (C) 2003-2009 by Berend-Jan "SkyLined" Wever""".center(console.output_screen_width);
   print """  dS'   Xb  SP,  ;SP   <berendjanwever@gmail.com>                            """.center(console.output_screen_width);
   print """ .SP dSSP'  "YSSSY"    http://skypher.com/wiki/index.php/BETA3               """.center(console.output_screen_width);
