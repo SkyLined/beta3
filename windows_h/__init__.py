@@ -1,4 +1,5 @@
 import ctypes
+from errors import *
 
 SHORT = ctypes.c_short
 WORD  = ctypes.c_ushort
