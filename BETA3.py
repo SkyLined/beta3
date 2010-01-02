@@ -1,6 +1,5 @@
 # -*- coding: latin1 -*-
 import re, sys;
-import console;
 
 #_______________________________________________________________________________________________________________________
 #                                                                                                                       
@@ -16,6 +15,7 @@ import console;
 # http://en.wikipedia.org/wiki/Code_page_437
 # http://en.wikipedia.org/wiki/ISO/IEC_8859-1
 numbers            = "0123456789";
+symbols            = " !\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~";
 uppercase          = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 uppercase_cp437    = "€Ž’š¥âãäèêíî";
 uppercase_latin_1  = "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞ";
@@ -25,6 +25,15 @@ lowercase_latin_1  = "ßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ";
 mixedcase          = uppercase + lowercase;
 mixedcase_cp437    = uppercase_cp437 + lowercase_cp437;
 mixedcase_latin_1  = uppercase_latin_1 + lowercase_latin_1;
+printable          = mixedcase + symbols;
+printable_cp437    = printable + mixedcase_cp437;
+printable_latin_1  = printable + mixedcase_latin_1;
+
+minimal_encoding = {
+  # http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-262.pdf
+  '\x08': r'\b', '\x0C': r'\f', '\x0A': r'\n', '\x0D': r'\r', '\x09': r'\t', 
+  '\x0B': r'\v', '\\': r'\\',
+}
 
 PIPE_BLOCK_SIZE = 0x1000;
 
@@ -45,6 +54,25 @@ def EncodeAscii(format, data, badchars, switches):
     result += format % ord(char);
   return result, len(data), errors;
 
+def EncodeMinimalAscii(quote, data, badchars, switches):
+  result = "";
+  errors = False;
+  for i in range(0, len(data)):
+    char = data[i];
+    if char in minimal_encoding:
+      result += minimal_encoding[char];
+    elif char == quote:
+      result += '\\' + char;
+    elif char in printable_latin_1:
+      result += char;
+    elif (i < len(data) - 1 and data[i+1] not in numbers) \
+        or i == len(data) - 1 :
+      result += '\\%o' % ord(char);
+    else:
+      result += '\\x%02X' % ord(char);
+    errors |= CheckChar(i, char, badchars, switches, char_as_string = "%02X" % ord(char));
+  return result, len(data), errors;
+
 def EncodeUnicode(format, data, badchars, switches):
   result = "";
   errors = False;
@@ -53,6 +81,30 @@ def EncodeUnicode(format, data, badchars, switches):
     errors |= CheckChar(i, unichr(char_code), badchars, switches, char_as_string = "%04X" % char_code);
     result += format % char_code;
   return result, len(data) * 2, errors;
+
+def EncodeMinimalUnicode(quote, data, badchars, switches):
+  result = "";
+  errors = False;
+  for i in range(0, len(data), 2):
+    char_code = ord(data[i]) + ord(data[i + 1]) * 256;
+    if char_code < 0x100:
+      char = chr(char_code);
+      if char in minimal_encoding:
+        result += minimal_encoding[char];
+      elif char == quote:
+        result += '\\' + char;
+      elif char in printable_latin_1:
+        result += char;
+      elif (i < len(data) - 1 and data[i+1] not in numbers) \
+          or i == len(data) - 1 :
+        result += '\\%o' % ord(char);
+      else:
+        result += '\\x%02X' % ord(char);
+    else:
+      char = unichr(char_code);
+      result += '\\u%04X' % char_code;
+    errors |= CheckChar(i, char, badchars, switches, char_as_string = "%04X" % char_code);
+  return result, len(data), errors;
 
 def CheckChar(i, char, badchars, switches, char_as_string):
   errors = False;
@@ -76,6 +128,11 @@ def CheckChar(i, char, badchars, switches, char_as_string):
     if not switches["--latin-1"] or char not in mixedcase_latin_1:
       if not switches["--cp437"] or char not in mixedcase_cp437:
         print >>sys.stderr, "Char %d @0x%02X = bad (non-alphanumeric '%s' %s)" % (i, i, char, char_as_string);
+        errors = True;
+  if switches["--printable"] and char not in printable:
+    if not switches["--latin-1"] or char not in printable_latin_1:
+      if not switches["--cp437"] or char not in printable_cp437:
+        print >>sys.stderr, "Char %d @0x%02X = bad (non-printable '%s' %s)" % (i, i, char, char_as_string);
         errors = True;
   return errors;
 
@@ -109,6 +166,10 @@ encodings = {
   "none":  {"enc": EncodeNone,    "fmt": None,        "re": None,                  "base": None},
   "h":     {"enc": EncodeAscii,   "fmt": "%02X",      "re": r"([0-9A-F]{2})",      "base": 16},
   "hu":    {"enc": EncodeUnicode, "fmt": "%04X",      "re": r"([0-9A-F]{4})",      "base": 16},
+  "\\'":   {"enc": EncodeMinimalAscii, "fmt": "'",    "re": None,                  "base": None},
+  "\\\"":  {"enc": EncodeMinimalAscii, "fmt": '"',    "re": None,                  "base": None},
+  "u\\'":  {"enc": EncodeMinimalUnicode, "fmt": "'",  "re": None,                  "base": None},
+  "u\\\"": {"enc": EncodeMinimalUnicode, "fmt": '"',  "re": None,                  "base": None},
   "\\x":   {"enc": EncodeAscii,   "fmt": "\\x%02X",   "re": r"\\x([0-9A-F]{2})",   "base": 16},
   "\\u":   {"enc": EncodeUnicode, "fmt": "\\u%04X",   "re": r"\\u([0-9A-F]{4})",   "base": 16},
   "\\u00": {"enc": EncodeAscii,   "fmt": "\\u00%02X", "re": r"\\u00([0-9A-F]{2})", "base": 16},
@@ -125,6 +186,7 @@ switches = {
     "--lowercase": False, 
     "--uppercase": False,
     "--mixedcase": False,
+    "--printable": False,
     "--cp437": False,
     "--latin-1": False,
     "--count": False,
@@ -133,14 +195,14 @@ switches = {
 };
 
 def Help():
-  print "".center(console.output_screen_width, "_");
+  print "".center(80, "_");
   print;
-  print """    ,sSSSs,   ,sSSSs,  BETA3 - Multi-format shellcode encoding tool.         """.center(console.output_screen_width);
-  print """   iS"`  XP  YS"  ,SY  (Version 1.1)                                         """.center(console.output_screen_width);
-  print """  .SP dSS"      ssS"   Copyright (C) 2003-2009 by Berend-Jan "SkyLined" Wever""".center(console.output_screen_width);
-  print """  dS'   Xb  SP,  ;SP   <berendjanwever@gmail.com>                            """.center(console.output_screen_width);
-  print """ .SP dSSP'  "YSSSY"    http://skypher.com/wiki/index.php/BETA3               """.center(console.output_screen_width);
-  print """ 4S:_________________________________________________________________________""".center(console.output_screen_width, "_");
+  print """    ,sSSSs,   ,sSSSs,  BETA3 - Multi-format shellcode encoding tool.         """.center(80);
+  print """   iS"`  XP  YS"  ,SY  (Version 1.1)                                         """.center(80);
+  print """  .SP dSS"      ssS"   Copyright (C) 2003-2009 by Berend-Jan "SkyLined" Wever""".center(80);
+  print """  dS'   Xb  SP,  ;SP   <berendjanwever@gmail.com>                            """.center(80);
+  print """ .SP dSSP'  "YSSSY"    http://skypher.com/wiki/index.php/BETA3               """.center(80);
+  print """ 4S:_________________________________________________________________________""".center(80, "_");
   print;
   print "Purpose:";
   print "  BETA can convert raw binary shellcode into text that can be used in exploit";
@@ -161,11 +223,12 @@ def Help():
     if name != "none":
       encoder_function = encodings[name]["enc"];
       encoder_fmt = encodings[name]["fmt"];
-      print "    %-5s : %s" % (name, encoder_function(encoder_fmt, "ABCD", "", switches)[0]);
+      print "    %-5s : %s" % (name, encoder_function(encoder_fmt, "ABC'\"\r\n\x00", "", switches)[0]);
     else:
       print "    %-5s : Do not encode or output the input." % name;
-  print "    (All these samples use as input data the string \"ABCD\". You cannot use";
-  print "    \"none\" encoding with the \"--decode\" option).";
+  print;
+  print "    (All these samples use as input data the string [ABC'\"\\r\\n\\0]. You cannot";
+  print "    use some encodings with the \"--decode\" option).";
   print;
   print "Options:";
   print "    --decode             - Decode encoded data to binary.";
@@ -176,10 +239,11 @@ def Help():
   print "    --nullfree           - Report any NULL characters in the data.";
   print "    --badchars=XX,XX,... - Report any of the characters supplied by hex value.";
   print "";
-  print "    --lowercase, --uppercase, or --mixedcase";
+  print "    --lowercase, --uppercase, --mixedcase, or --printable";
   print "                         - Report any non-lower-, upper-, or mixedcase";
-  print "                           alphanumeric characters in the data. These options";
-  print "                           can be combined with both of these options:";
+  print "                           alphanumeric or non-printable characters in the ";
+  print "                           data. These options can be combined with both of ";
+  print "                           these options:";
   print "    --latin-1            - Allow alphanumeric latin-1 high ascii characters.";
   print "    --cp437              - Allow alphanumeric cp437 high ascii characters.";
 
@@ -207,7 +271,7 @@ def Main():
   if not encoding_info:
     encoding_info = encodings["none"];
   if not file_name:
-    data = console.Read(console.stdin);
+    data = sys.stdin.read();
   else:
     data_stream = open(file_name, "rb");
     try:
@@ -223,20 +287,24 @@ def Main():
     encoder_fmt = encoding_info["fmt"];
     encoded_shellcode, byte_count, errors = encoder_function(encoder_fmt, data, badchars, switches);
     if switches["--count"]:
-      print "Size: %d (0x%X) bytes." % (byte_count, byte_count);
+      print "Input: %(i)d (0x%(i)X) bytes, output: %(o)d (0x%(o)X) bytes." % \
+          {"i": byte_count, "o": len(encoded_shellcode)};
     if encoded_shellcode is not None:
-      console.Write(console.stdout, encoded_shellcode);
+      sys.stdout.write(encoded_shellcode);
   else:
     decoder_re = encoding_info["re"];
     decoder_base = encoding_info["base"];
     if encoding_info == encodings["none"]:
       print >>sys.stderr, "Cannot decode without an encoding.";
       return False;
+    if decoder_re is None:
+      print >>sys.stderr, "Cannot decode this type of encoding.";
+      return False;
     decoded_shellcode, byte_count, errors = Decode(decoder_re, decoder_base, data, badchars, switches);
     if switches["--count"]:
       print "Size: %d (0x%X) bytes." % (byte_count, byte_count);
     if decoded_shellcode is not None:
-      console.Write(console.stdout, decoded_shellcode);
+      sys.stdout.write(decoded_shellcode);
   return not errors;
 
 if __name__ == "__main__":
