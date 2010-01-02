@@ -198,7 +198,7 @@ def Help():
   print "".center(80, "_");
   print;
   print """    ,sSSSs,   ,sSSSs,  BETA3 - Multi-format shellcode encoding tool.         """.center(80);
-  print """   iS"`  XP  YS"  ,SY  (Version 1.1)                                         """.center(80);
+  print """   iS"`  XP  YS"  ,SY  (Version 1.2)                                         """.center(80);
   print """  .SP dSS"      ssS"   Copyright (C) 2003-2009 by Berend-Jan "SkyLined" Wever""".center(80);
   print """  dS'   Xb  SP,  ;SP   <berendjanwever@gmail.com>                            """.center(80);
   print """ .SP dSSP'  "YSSSY"    http://skypher.com/wiki/index.php/BETA3               """.center(80);
