@@ -177,6 +177,8 @@ encodings = {
   "none":  {"enc": EncodeNone,    "fmt": None,        "re": None,                  "base": None},
   "h":     {"enc": EncodeAscii,   "fmt": "%02X",      "re": r"([0-9A-F]{2})",      "base": 16},
   "hu":    {"enc": EncodeUnicode, "fmt": "%04X",      "re": r"([0-9A-F]{4})",      "base": 16},
+  "h_":    {"enc": EncodeAscii,   "fmt": "%02X ",     "re": r"([0-9A-F]{2})",      "base": 16},
+  "hu_":   {"enc": EncodeUnicode, "fmt": "%04X ",     "re": r"([0-9A-F]{4})",      "base": 16},
   "\\'":   {"enc": EncodeMinimalAscii, "fmt": "'",    "re": None,                  "base": None},
   "\\\"":  {"enc": EncodeMinimalAscii, "fmt": '"',    "re": None,                  "base": None},
   "u\\'":  {"enc": EncodeMinimalUnicode, "fmt": "'",  "re": None,                  "base": None},
