@@ -17,20 +17,26 @@ import re, sys;
 # http://en.wikipedia.org/wiki/Ascii
 # http://en.wikipedia.org/wiki/Code_page_437
 # http://en.wikipedia.org/wiki/ISO/IEC_8859-1
-numbers            = "0123456789";
-symbols            = " !\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~";
-uppercase          = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-uppercase_cp437    = "€’š¥âãäèêíî";
-uppercase_latin_1  = "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏĞÑÒÓÔÕÖØÙÚÛÜİŞ";
-lowercase          = "abcdefghijklmnopqrstuvwxyz";
-lowercase_cp437    = "‚ƒ„…†‡ˆ‰Š‹Œ‘“”•–—˜Ÿ ¡¢£¤àáåæçéë";
-lowercase_latin_1  = "ßàáâãäåæçèéêëìíîïğñòóôõöøùúûüışÿ";
-mixedcase          = uppercase + lowercase;
-mixedcase_cp437    = uppercase_cp437 + lowercase_cp437;
-mixedcase_latin_1  = uppercase_latin_1 + lowercase_latin_1;
-printable          = mixedcase + symbols;
-printable_cp437    = printable + mixedcase_cp437;
-printable_latin_1  = printable + mixedcase_latin_1;
+numbers                 = "0123456789";
+symbols                 = " !\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~";
+uppercase_alpha         = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+uppercase_alpha_cp437   = "€’š¥âãäèêíî";
+uppercase_alpha_latin_1 = "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏĞÑÒÓÔÕÖØÙÚÛÜİŞ";
+lowercase_alpha         = "abcdefghijklmnopqrstuvwxyz";
+lowercase_alpha_cp437   = "‚ƒ„…†‡ˆ‰Š‹Œ‘“”•–—˜Ÿ ¡¢£¤àáåæçéë";
+lowercase_alpha_latin_1 = "ßàáâãäåæçèéêëìíîïğñòóôõöøùúûüışÿ";
+uppercase               = numbers + uppercase_alpha;
+uppercase_cp437         = uppercase + uppercase_alpha_cp437;
+uppercase_latin_1       = uppercase + uppercase_alpha_latin_1;
+lowercase               = numbers + lowercase_alpha;
+lowercase_cp437         = lowercase + lowercase_alpha_cp437;
+lowercase_latin_1       = lowercase + lowercase_alpha_latin_1;
+mixedcase               = numbers + uppercase_alpha + lowercase_alpha;
+mixedcase_cp437         = mixedcase + uppercase_alpha_cp437 + lowercase_alpha_cp437;
+mixedcase_latin_1       = mixedcase + uppercase_alpha_latin_1 + lowercase_alpha_latin_1;
+printable               = mixedcase + symbols;
+printable_cp437         = mixedcase_cp437 + symbols;
+printable_latin_1       = mixedcase_latin_1 + symbols;
 
 minimal_encoding = {
   # http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-262.pdf
