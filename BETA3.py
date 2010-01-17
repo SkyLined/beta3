@@ -19,6 +19,8 @@ import re, sys;
 # http://en.wikipedia.org/wiki/ISO/IEC_8859-1
 numbers                 = "0123456789";
 symbols                 = " !\"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~";
+symbols_cp437           = "›œ¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏĞÑÒÓÔÕÖ×ØÙÚÛÜİŞßìïğñòóôõö÷øùúûüışÿ";
+symbols_latin_1         = " ¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿×÷";
 uppercase_alpha         = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 uppercase_alpha_cp437   = "€’š¥âãäèêíî";
 uppercase_alpha_latin_1 = "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏĞÑÒÓÔÕÖØÙÚÛÜİŞ";
@@ -35,8 +37,8 @@ mixedcase               = numbers + uppercase_alpha + lowercase_alpha;
 mixedcase_cp437         = mixedcase + uppercase_alpha_cp437 + lowercase_alpha_cp437;
 mixedcase_latin_1       = mixedcase + uppercase_alpha_latin_1 + lowercase_alpha_latin_1;
 printable               = mixedcase + symbols;
-printable_cp437         = mixedcase_cp437 + symbols;
-printable_latin_1       = mixedcase_latin_1 + symbols;
+printable_cp437         = mixedcase_cp437 + symbols + symbols_cp437;
+printable_latin_1       = mixedcase_latin_1 + symbols + symbols_latin_1;
 
 minimal_encoding = {
   # http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-262.pdf
