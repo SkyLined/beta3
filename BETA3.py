@@ -241,7 +241,7 @@ encodings = {
   "0x32u": {"enc": EncodeUnicode, "fmt": "0x%04X%04X",   "cpf": 2, "sep": ", ", "re": 
                                                                       r"0x([0-9A-F]{1,4})([0-9A-F]{1,4})", "base": 16},
 };
-switches = {
+default_switches = {
     "--nullfree": False, 
     "--lowercase": False, 
     "--uppercase": False,
@@ -257,6 +257,7 @@ switches = {
 };
 
 def Help():
+  global default_switches;
   print "".center(80, "_");
   print;
   print """    ,sSSSs,   ,sSSSs,  BETA3 - Multi-format shellcode encoding tool.         """.center(80);
@@ -286,13 +287,26 @@ def Help():
       encoder_enc = encodings[name]["enc"];
       encoder_fmt = encodings[name]["fmt"];
       encoder_cpf = encodings[name]["cpf"];
-      print "    %-5s : %s" % (name, encoder_enc(encoder_fmt, encoder_cpf, "ABC'\"\r\n\x00", "", switches)[0]);
+      encoder_sep = encodings[name]["sep"];
+      result = encoder_enc(encoder_fmt, encoder_cpf, encoder_sep, "ABC'\"\r\n\x00", "", switches);
+      print "    %-5s : %s" % (name, result[0]);
     else:
       print "    %-5s : Do not encode or output the input." % name;
   print;
   print "    (All these samples use as input data the string [ABC'\"\\r\\n\\0]. You cannot";
-  print "    use some encodings with the \"--decode\" option. The \"--big-endian\" switch";
-  print "    affects the order of characters in the \"0x\" encodings).";
+  print "    use some encodings with the \"--decode\" option).";
+  print "    The \"--big-endian\" switch has the following effect on the \"0x\" encodings:";
+  print;
+  for name in sorted_encoder_keys:
+    if name != "none" and name.startswith("0x"):
+      encoder_enc = encodings[name]["enc"];
+      encoder_fmt = encodings[name]["fmt"];
+      encoder_cpf = encodings[name]["cpf"];
+      encoder_sep = encodings[name]["sep"];
+      fake_switches = default_switches.copy();
+      fake_switches["--big-endian"] = True;
+      result = encoder_enc(encoder_fmt, encoder_cpf, encoder_sep, "ABC'\"\r\n\x00", "", fake_switches);
+      print "    %-5s : %s" % (name, result[0]);
   print;
   print "Options:";
   print "    --decode             - Decode encoded data to binary.";
@@ -315,7 +329,8 @@ def Help():
   print "    --cp437              - Allow alphanumeric cp437 high ascii characters.";
 
 def Main():
-  global switches, encodings;
+  global default_switches, encodings;
+  switches = default_switches.copy();
   encoding_info = None;
   file_name = None;
   if len(sys.argv) == 1:
