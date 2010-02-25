@@ -48,7 +48,8 @@ minimal_encoding = {
 
 PIPE_BLOCK_SIZE = 0x1000;
 
-def EncodeNone(format, data, badchars, switches):
+def EncodeNone(format, chars_in_format, data, badchars, switches):
+  # format and chars_in_format are ignored here.
   errors = False;
   for i in range(0, len(data)):
     char = data[i];
@@ -56,20 +57,40 @@ def EncodeNone(format, data, badchars, switches):
   # Return original data if --count is not provided, otherwise return nothing.
   return {True: None, False: data}[switches["--count"]], len(data), errors;
 
-def EncodeAscii(format, data, badchars, switches):
+def EncodeAscii(format, chars_in_format, seperator, data, badchars, switches):
   result = "";
   errors = False;
+  char_codes = [];
   for i in range(0, len(data)):
     char = data[i];
     errors |= CheckChar(i, char, badchars, switches, char_as_string = "%02X" % ord(char));
-    result += format % ord(char);
+    char_codes.append(ord(char));
+    if len(char_codes) > chars_in_format:
+      format_char_codes = char_codes[:chars_in_format];
+      del char_codes[:chars_in_format];
+      if not switches["--big-endian"]:
+        format_char_codes.reverse();
+      if result != "":
+        result += seperator;
+      result += format % tuple(format_char_codes);
+  if char_codes:
+    while len(char_codes) < chars_in_format:
+      char_codes.append(0);
+    if not switches["--big-endian"]:
+      char_codes.reverse();
+    if result != "":
+      result += seperator;
+    result += format % tuple(char_codes);
   return result, len(data), errors;
 
-def EncodeMinimalAscii(quote, data, badchars, switches):
+def EncodeMinimalAscii(quote, chars_in_format, seperator, data, badchars, switches):
+  # chars_in_format is ignored here.
   result = "";
   errors = False;
   for i in range(0, len(data)):
     char = data[i];
+    if result != "":
+      result += seperator;
     if char in minimal_encoding:
       result += minimal_encoding[char];
     elif char == quote:
@@ -84,22 +105,42 @@ def EncodeMinimalAscii(quote, data, badchars, switches):
     errors |= CheckChar(i, char, badchars, switches, char_as_string = "%02X" % ord(char));
   return result, len(data), errors;
 
-def EncodeUnicode(format, data, badchars, switches):
+def EncodeUnicode(format, chars_in_format, seperator, data, badchars, switches):
   result = "";
   errors = False;
+  char_codes = [];
   for i in range(0, len(data), 2):
     char_code = ord(data[i]) + ord(data[i + 1]) * 256;
     errors |= CheckChar(i, unichr(char_code), badchars, switches, char_as_string = "%04X" % char_code);
-    result += format % char_code;
+    char_codes.append(char_code);
+    if len(char_codes) > chars_in_format:
+      format_char_codes = char_codes[:chars_in_format];
+      del char_codes[:chars_in_format];
+      if not switches["--big-endian"]:
+        format_char_codes.reverse();
+      if result != "":
+        result += seperator;
+      result += format % tuple(format_char_codes);
+  if char_codes:
+    while len(char_codes) < chars_in_format:
+      char_codes.append(0);
+    if not switches["--big-endian"]:
+      char_codes.reverse();
+    if result != "":
+      result += seperator;
+    result += format % tuple(char_codes);
   return result, len(data) * 2, errors;
 
-def EncodeMinimalUnicode(quote, data, badchars, switches):
+def EncodeMinimalUnicode(quote, chars_in_format, seperator, data, badchars, switches):
+  # chars_in_format is ignored here.
   result = "";
   errors = False;
   for i in range(0, len(data), 2):
     char_code = ord(data[i]) + ord(data[i + 1]) * 256;
     if char_code < 0x100:
       char = chr(char_code);
+      if result != "":
+        result += seperator;
       if char in minimal_encoding:
         result += minimal_encoding[char];
       elif char == quote:
@@ -174,25 +215,31 @@ def Decode(decoder_re, decode_base, data, badchars, switches):
   return result, len(result), errors;
 
 encodings = {
-  "none":  {"enc": EncodeNone,    "fmt": None,        "re": None,                  "base": None},
-  "h":     {"enc": EncodeAscii,   "fmt": "%02X",      "re": r"([0-9A-F]{2})",      "base": 16},
-  "hu":    {"enc": EncodeUnicode, "fmt": "%04X",      "re": r"([0-9A-F]{4})",      "base": 16},
-  "h_":    {"enc": EncodeAscii,   "fmt": "%02X ",     "re": r"([0-9A-F]{2})",      "base": 16},
-  "hu_":   {"enc": EncodeUnicode, "fmt": "%04X ",     "re": r"([0-9A-F]{4})",      "base": 16},
-  "\\'":   {"enc": EncodeMinimalAscii, "fmt": "'",    "re": None,                  "base": None},
-  "\\\"":  {"enc": EncodeMinimalAscii, "fmt": '"',    "re": None,                  "base": None},
-  "u\\'":  {"enc": EncodeMinimalUnicode, "fmt": "'",  "re": None,                  "base": None},
-  "u\\\"": {"enc": EncodeMinimalUnicode, "fmt": '"',  "re": None,                  "base": None},
-  "\\x":   {"enc": EncodeAscii,   "fmt": "\\x%02X",   "re": r"\\x([0-9A-F]{2})",   "base": 16},
-  "\\u":   {"enc": EncodeUnicode, "fmt": "\\u%04X",   "re": r"\\u([0-9A-F]{4})",   "base": 16},
-  "\\u00": {"enc": EncodeAscii,   "fmt": "\\u00%02X", "re": r"\\u00([0-9A-F]{2})", "base": 16},
-  "%":     {"enc": EncodeAscii,   "fmt": "%%%02X",    "re": r"%([0-9A-F]{2})",     "base": 16},
-  "%u":    {"enc": EncodeUnicode, "fmt": "%%u%04X",   "re": r"%u([0-9A-F]{4})",    "base": 16},
-  "%u00":  {"enc": EncodeAscii,   "fmt": "%%u00%02X", "re": r"%u00([0-9A-F]{2})",  "base": 16},
-  "&#":    {"enc": EncodeAscii,   "fmt": "&#%d;",     "re": r"&#([0-9]{1,3})",     "base": 10},
-  "&#u":   {"enc": EncodeUnicode, "fmt": "&#%d;",     "re": r"&#([0-9]{1,5})",     "base": 10},
-  "&#x":   {"enc": EncodeAscii,   "fmt": "&#x%X;",    "re": r"&#x([0-9A-F]{1,2})", "base": 16},
-  "&#xu":  {"enc": EncodeUnicode, "fmt": "&#x%X;",    "re": r"&#x([0-9A-F]{1,4})", "base": 16}
+  "none":  {"enc": EncodeNone,    "fmt": None,           "cpf": 0, "sep": "", "re": None,                 "base": None},
+  "h":     {"enc": EncodeAscii,   "fmt": "%02X",         "cpf": 1, "sep": "", "re": r"([0-9A-F]{2})",     "base": 16},
+  "hu":    {"enc": EncodeUnicode, "fmt": "%04X",         "cpf": 1, "sep": "", "re": r"([0-9A-F]{4})",     "base": 16},
+  "\\'":   {"enc": EncodeMinimalAscii, "fmt": "'",       "cpf": 1, "sep": "", "re": None,                 "base": None},
+  "\\\"":  {"enc": EncodeMinimalAscii, "fmt": '"',       "cpf": 1, "sep": "", "re": None,                 "base": None},
+  "u\\'":  {"enc": EncodeMinimalUnicode, "fmt": "'",     "cpf": 1, "sep": "", "re": None,                 "base": None},
+  "u\\\"": {"enc": EncodeMinimalUnicode, "fmt": '"',     "cpf": 1, "sep": "", "re": None,                 "base": None},
+  "\\x":   {"enc": EncodeAscii,   "fmt": "\\x%02X",      "cpf": 1, "sep": "", "re": r"\\x([0-9A-F]{2})",  "base": 16},
+  "\\u":   {"enc": EncodeUnicode, "fmt": "\\u%04X",      "cpf": 1, "sep": "", "re": r"\\u([0-9A-F]{4})",  "base": 16},
+  "\\u00": {"enc": EncodeAscii,   "fmt": "\\u00%02X",    "cpf": 1, "sep": "", "re": r"\\u00([0-9A-F]{2})", "base": 16},
+  "%":     {"enc": EncodeAscii,   "fmt": "%%%02X",       "cpf": 1, "sep": "", "re": r"%([0-9A-F]{2})",    "base": 16},
+  "%u":    {"enc": EncodeUnicode, "fmt": "%%u%04X",      "cpf": 1, "sep": "", "re": r"%u([0-9A-F]{4})",   "base": 16},
+  "%u00":  {"enc": EncodeAscii,   "fmt": "%%u00%02X",    "cpf": 1, "sep": "", "re": r"%u00([0-9A-F]{2})", "base": 16},
+  "&#":    {"enc": EncodeAscii,   "fmt": "&#%d;",        "cpf": 1, "sep": "", "re": r"&#([0-9]{1,3})",    "base": 10},
+  "&#u":   {"enc": EncodeUnicode, "fmt": "&#%d;",        "cpf": 1, "sep": "", "re": r"&#([0-9]{1,5})",    "base": 10},
+  "&#x":   {"enc": EncodeAscii,   "fmt": "&#x%X;",       "cpf": 1, "sep": "", "re": r"&#x([0-9A-F]{1,2})", "base": 16},
+  "&#xu":  {"enc": EncodeUnicode, "fmt": "&#x%X;",       "cpf": 1, "sep": "", "re": r"&#x([0-9A-F]{1,4})", "base": 16},
+  "0x8":   {"enc": EncodeAscii,   "fmt": "0x%02X",       "cpf": 1, "sep": ", ", "re": r"0x([0-9A-F]{1,2})", "base": 16},
+  "0x16":  {"enc": EncodeAscii,   "fmt": "0x%02X%02X",   "cpf": 2, "sep": ", ", 
+                                                                "re": r"0x([0-9A-F]{1,2})([0-9A-F]{1,2})", "base": 16},
+  "0x16u": {"enc": EncodeUnicode, "fmt": "0x%04X",       "cpf": 1, "sep": ", ", "re": r"0x([0-9A-F]{1,4})", "base": 16},
+  "0x32":  {"enc": EncodeAscii,   "fmt": "0x%02X%02X%02X%02X", "cpf": 4, "sep": ", ", 
+                                  "re": r"0x([0-9A-F]{1,2})([0-9A-F]{1,2})([0-9A-F]{1,2})([0-9A-F]{1,2})", "base": 16},
+  "0x32u": {"enc": EncodeUnicode, "fmt": "0x%04X%04X",   "cpf": 2, "sep": ", ", "re": 
+                                                                      r"0x([0-9A-F]{1,4})([0-9A-F]{1,4})", "base": 16},
 };
 switches = {
     "--nullfree": False, 
@@ -202,9 +249,11 @@ switches = {
     "--printable": False,
     "--cp437": False,
     "--latin-1": False,
+    "--big-endian": False,
+    "--seperator": None,
     "--count": False,
     "--decode": False,
-    "--badchars": ""
+    "--badchars": "",
 };
 
 def Help():
@@ -234,14 +283,16 @@ def Help():
   sorted_encoder_keys.sort();
   for name in sorted_encoder_keys:
     if name != "none":
-      encoder_function = encodings[name]["enc"];
+      encoder_enc = encodings[name]["enc"];
       encoder_fmt = encodings[name]["fmt"];
-      print "    %-5s : %s" % (name, encoder_function(encoder_fmt, "ABC'\"\r\n\x00", "", switches)[0]);
+      encoder_cpf = encodings[name]["cpf"];
+      print "    %-5s : %s" % (name, encoder_enc(encoder_fmt, encoder_cpf, "ABC'\"\r\n\x00", "", switches)[0]);
     else:
       print "    %-5s : Do not encode or output the input." % name;
   print;
   print "    (All these samples use as input data the string [ABC'\"\\r\\n\\0]. You cannot";
-  print "    use some encodings with the \"--decode\" option).";
+  print "    use some encodings with the \"--decode\" option. The \"--big-endian\" switch";
+  print "    affects the order of characters in the \"0x\" encodings).";
   print;
   print "Options:";
   print "    --decode             - Decode encoded data to binary.";
@@ -250,6 +301,9 @@ def Help():
   print "                           with \"none\" encoding, the data is not output, only";
   print "                           the size.";
   print "    --nullfree           - Report any NULL characters in the data.";
+  print "    --big-endian         - For \"0x\"-encoding/decoding, select big-endian over";
+  print "                           instead of the default little-endian.";
+  print "    --seperator=...      - A string of characters to be inserted between values";
   print "    --badchars=XX,XX,... - Report any of the characters supplied by hex value.";
   print "";
   print "    --lowercase, --uppercase, --mixedcase, or --printable";
@@ -296,9 +350,12 @@ def Main():
     for i in switches["--badchars"].split(","):
       badchars += unichr(int(i, 16));
   if not switches["--decode"]:
-    encoder_function = encoding_info["enc"];
-    encoder_fmt = encoding_info["fmt"];
-    encoded_shellcode, byte_count, errors = encoder_function(encoder_fmt, data, badchars, switches);
+    if switches["--seperator"] is not None:
+      seperator = switches["--seperator"];
+    else:
+      seperator = encoding_info["sep"];
+    encoded_shellcode, byte_count, errors = encoding_info["enc"](encoding_info["fmt"], encoding_info["cpf"], \
+        seperator, data, badchars, switches);
     if switches["--count"]:
       print "Input: %(i)d (0x%(i)X) bytes, output: %(o)d (0x%(o)X) bytes." % \
           {"i": byte_count, "o": len(encoded_shellcode)};
