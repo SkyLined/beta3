@@ -48,7 +48,7 @@ minimal_encoding = {
 
 PIPE_BLOCK_SIZE = 0x1000;
 
-def EncodeNone(format, chars_in_format, data, badchars, badunichars, switches):
+def EncodeNone(format, chars_in_format, seperator, data, badchars, badunichars, switches):
   # format and chars_in_format are ignored here.
   errors = False;
   for i in range(0, len(data)):
