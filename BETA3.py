@@ -48,7 +48,7 @@ minimal_encoding = {
 
 PIPE_BLOCK_SIZE = 0x1000;
 
-def EncodeNone(format, chars_in_format, data, badchars, switches):
+def EncodeNone(format, chars_in_format, data, badchars, badunichars, switches):
   # format and chars_in_format are ignored here.
   errors = False;
   for i in range(0, len(data)):
@@ -57,7 +57,7 @@ def EncodeNone(format, chars_in_format, data, badchars, switches):
   # Return original data if --count is not provided, otherwise return nothing.
   return {True: None, False: data}[switches["--count"]], len(data), errors;
 
-def EncodeAscii(format, chars_in_format, seperator, data, badchars, switches):
+def EncodeAscii(format, chars_in_format, seperator, data, badchars, badunichars, switches):
   result = "";
   errors = False;
   char_codes = [];
@@ -83,7 +83,7 @@ def EncodeAscii(format, chars_in_format, seperator, data, badchars, switches):
     result += format % tuple(char_codes);
   return result, len(data), errors;
 
-def EncodeMinimalAscii(quote, chars_in_format, seperator, data, badchars, switches):
+def EncodeMinimalAscii(quote, chars_in_format, seperator, data, badchars, badunichars, switches):
   # chars_in_format is ignored here.
   result = "";
   errors = False;
@@ -105,13 +105,13 @@ def EncodeMinimalAscii(quote, chars_in_format, seperator, data, badchars, switch
     errors |= CheckChar(i, char, badchars, switches, char_as_string = "%02X" % ord(char));
   return result, len(data), errors;
 
-def EncodeUnicode(format, chars_in_format, seperator, data, badchars, switches):
+def EncodeUnicode(format, chars_in_format, seperator, data, badchars, badunichars, switches):
   result = "";
   errors = False;
   char_codes = [];
   for i in range(0, len(data), 2):
     char_code = ord(data[i]) + ord(data[i + 1]) * 256;
-    errors |= CheckChar(i, unichr(char_code), badchars, switches, char_as_string = "%04X" % char_code);
+    errors |= CheckChar(i, unichr(char_code), badunichars, switches, char_as_string = "%04X" % char_code);
     char_codes.append(char_code);
     if len(char_codes) > chars_in_format:
       format_char_codes = char_codes[:chars_in_format];
@@ -131,7 +131,7 @@ def EncodeUnicode(format, chars_in_format, seperator, data, badchars, switches):
     result += format % tuple(char_codes);
   return result, len(data) * 2, errors;
 
-def EncodeMinimalUnicode(quote, chars_in_format, seperator, data, badchars, switches):
+def EncodeMinimalUnicode(quote, chars_in_format, seperator, data, badchars, badunichars, switches):
   # chars_in_format is ignored here.
   result = "";
   errors = False;
@@ -155,7 +155,7 @@ def EncodeMinimalUnicode(quote, chars_in_format, seperator, data, badchars, swit
     else:
       char = unichr(char_code);
       result += '\\u%04X' % char_code;
-    errors |= CheckChar(i, char, badchars, switches, char_as_string = "%04X" % char_code);
+    errors |= CheckChar(i, char, badunichars, switches, char_as_string = "%04X" % char_code);
   return result, len(data), errors;
 
 def CheckChar(i, char, badchars, switches, char_as_string):
@@ -188,7 +188,7 @@ def CheckChar(i, char, badchars, switches, char_as_string):
         errors = True;
   return errors;
 
-def Decode(decoder_re, decode_base, data, badchars, switches):
+def Decode(decoder_re, decode_base, data, badchars, badunichars, switches):
   result = "";
   errors = False;
   i = 0;
@@ -207,9 +207,10 @@ def Decode(decoder_re, decode_base, data, badchars, switches):
         errors = True;
       if char_code < 0x100:
         char = chr(char_code);
+        errors |= CheckChar(i, char, badchars, switches, char_encoded_string);
       else:
         char = unichr(char_code);
-      errors |= CheckChar(i, char, badchars, switches, char_encoded_string);
+        errors |= CheckChar(i, char, badunichars, switches, char_encoded_string);
       result += char;
       i += len(char_encoded_string);
   return result, len(result), errors;
@@ -262,7 +263,7 @@ def Help():
   print;
   print """    ,sSSSs,   ,sSSSs,  BETA3 - Multi-format shellcode encoding tool.         """.center(80);
   print """   iS"`  XP  YS"  ,SY  (Version 1.2)                                         """.center(80);
-  print """  .SP dSS"      ssS"   Copyright (C) 2003-2009 by Berend-Jan "SkyLined" Wever""".center(80);
+  print """  .SP dSS"      ssS"   Copyright (C) 2003-2010 by Berend-Jan "SkyLined" Wever""".center(80);
   print """  dS'   Xb  SP,  ;SP   <berendjanwever@gmail.com>                            """.center(80);
   print """ .SP dSSP'  "YSSSY"    http://skypher.com/wiki/index.php/BETA3               """.center(80);
   print """ 4S:_________________________________________________________________________""".center(80, "_");
@@ -288,7 +289,7 @@ def Help():
       encoder_fmt = encodings[name]["fmt"];
       encoder_cpf = encodings[name]["cpf"];
       encoder_sep = encodings[name]["sep"];
-      result = encoder_enc(encoder_fmt, encoder_cpf, encoder_sep, "ABC'\"\r\n\x00", "", switches);
+      result = encoder_enc(encoder_fmt, encoder_cpf, encoder_sep, "ABC'\"\r\n\x00", "", "", switches);
       print "    %-5s : %s" % (name, result[0]);
     else:
       print "    %-5s : Do not encode or output the input." % name;
@@ -305,7 +306,7 @@ def Help():
       encoder_sep = encodings[name]["sep"];
       fake_switches = default_switches.copy();
       fake_switches["--big-endian"] = True;
-      result = encoder_enc(encoder_fmt, encoder_cpf, encoder_sep, "ABC'\"\r\n\x00", "", fake_switches);
+      result = encoder_enc(encoder_fmt, encoder_cpf, encoder_sep, "ABC'\"\r\n\x00", "", "", fake_switches);
       print "    %-5s : %s" % (name, result[0]);
   print;
   print "Options:";
@@ -361,16 +362,20 @@ def Main():
     finally:
       data_stream.close();
   badchars = "";
+  badunichars = "";
   if switches is not None and switches["--badchars"] != "":
     for i in switches["--badchars"].split(","):
-      badchars += unichr(int(i, 16));
+      char_code = int(i, 16);
+      badunichars += unichr(char_code);
+      if char_code < 0x100:
+        badchars += chr(char_code);
   if not switches["--decode"]:
     if switches["--seperator"] is not None:
       seperator = switches["--seperator"];
     else:
       seperator = encoding_info["sep"];
     encoded_shellcode, byte_count, errors = encoding_info["enc"](encoding_info["fmt"], encoding_info["cpf"], \
-        seperator, data, badchars, switches);
+        seperator, data, badchars, badunichars, switches);
     if switches["--count"]:
       print "Input: %(i)d (0x%(i)X) bytes, output: %(o)d (0x%(o)X) bytes." % \
           {"i": byte_count, "o": len(encoded_shellcode)};
@@ -385,7 +390,7 @@ def Main():
     if decoder_re is None:
       print >>sys.stderr, "Cannot decode this type of encoding.";
       return False;
-    decoded_shellcode, byte_count, errors = Decode(decoder_re, decoder_base, data, badchars, switches);
+    decoded_shellcode, byte_count, errors = Decode(decoder_re, decoder_base, data, badchars, badunichars, switches);
     if switches["--count"]:
       print "Size: %d (0x%X) bytes." % (byte_count, byte_count);
     if decoded_shellcode is not None:
