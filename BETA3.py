@@ -289,7 +289,7 @@ def Help():
       encoder_fmt = encodings[name]["fmt"];
       encoder_cpf = encodings[name]["cpf"];
       encoder_sep = encodings[name]["sep"];
-      result = encoder_enc(encoder_fmt, encoder_cpf, encoder_sep, "ABC'\"\r\n\x00", "", "", switches);
+      result = encoder_enc(encoder_fmt, encoder_cpf, encoder_sep, "ABC'\"\r\n\x00", "", "", default_switches);
       print "    %-5s : %s" % (name, result[0]);
     else:
       print "    %-5s : Do not encode or output the input." % name;
