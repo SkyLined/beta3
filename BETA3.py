@@ -398,6 +398,7 @@ def Main():
   return not errors;
 
 if __name__ == "__main__":
+  import sys;
   success = Main();
   exit_code = {True: 0, False: 1}[success];
-  exit(exit_code);
+  sys.exit(exit_code);
