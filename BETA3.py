@@ -377,8 +377,11 @@ def Main():
     encoded_shellcode, byte_count, errors = encoding_info["enc"](encoding_info["fmt"], encoding_info["cpf"], \
         seperator, data, badchars, badunichars, switches);
     if switches["--count"]:
-      print "Input: %(i)d (0x%(i)X) bytes, output: %(o)d (0x%(o)X) bytes." % \
-          {"i": byte_count, "o": len(encoded_shellcode)};
+      if encoded_shellcode is None:
+        print "Input: %(i)d (0x%(i)X) bytes." % {"i": byte_count};
+      else:
+        print "Input: %(i)d (0x%(i)X) bytes, output: %(o)d (0x%(o)X) bytes." % \
+            {"i": byte_count, "o": len(encoded_shellcode)};
     if encoded_shellcode is not None:
       sys.stdout.write(encoded_shellcode);
   else:
